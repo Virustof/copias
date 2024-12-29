@@ -1,4 +1,23 @@
-import { useState } from 'react'
+import React from "react";
+import { BrowserRouter as Router } from "react-router";
+import AppRouter from "./router";
+import Header from "./components/Header";
+import { FileProvider } from "./contexts/FileContext";
+
+const App = () => {
+  return (
+    <FileProvider>
+      <Router>
+        <Header />
+        <AppRouter />
+      </Router>
+    </FileProvider>
+  );
+};
+
+export default App;
+
+/* import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
@@ -32,4 +51,4 @@ function App() {
   )
 }
 
-export default App
+export default App */
