@@ -106,7 +106,7 @@ export class Parser {
         this.match(TOKEN_TYPES.SYMBOL); // "}"
         return { type: "Operacion", details: operacion };
     } */
-
+/* 
     parseListaOperaciones() {
         this.match(TOKEN_TYPES.SYMBOL); // "["
         const lista = [];
@@ -116,7 +116,7 @@ export class Parser {
         this.match(TOKEN_TYPES.SYMBOL); // "]"
         return lista;
     }
-
+ */
     parseConfiguraciones(section) {
         const configuraciones = [];
         if (this.match(TOKEN_TYPES.KEYWORD)?.lexeme === section) {

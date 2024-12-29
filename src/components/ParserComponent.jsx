@@ -1,11 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { analyzeCode } from "../utils/lexerUtils";
 import { Parser } from "../utils/parserUtils";
+import { useFile } from "../contexts/FileContext"; // Importa el contexto global
 
 const ParserComponent = () => {
   const [input, setInput] = useState("");
   const [parseTree, setParseTree] = useState(null);
   const [errors, setErrors] = useState([]);
+  const { fileContent } = useFile(); // Obtén el contenido del archivo desde el contexto
+  const [hasEdited, setHasEdited] = useState(false); // Indica si el usuario ha editado
+
 
   const handleAnalyze = () => {
     const { tokens } = analyzeCode(input); // Analiza el código léxicamente
@@ -14,6 +18,17 @@ const ParserComponent = () => {
     setParseTree(tree);
     setErrors(parser.errors); // Registra errores sintácticos si los hay
   };
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    setHasEdited(true); // Indica que el usuario ha modificado el contenido
+  };
+
+  useEffect(() => {
+    if (!hasEdited && fileContent !== input) {
+      setInput(fileContent);
+    }
+  }, [fileContent, input, hasEdited]);
 
   // Función para renderizar el árbol sintáctico
   const renderTree = (node, level = 0) => {
@@ -37,7 +52,7 @@ const ParserComponent = () => {
         cols="50"
         placeholder="Escribe o pega el código aquí..."
         value={input}
-        onChange={(e) => setInput(e.target.value)}
+        onChange={handleInputChange}
       ></textarea>
       <button onClick={handleAnalyze}>Analizar Sintáctico</button>
 

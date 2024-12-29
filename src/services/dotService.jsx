@@ -205,4 +205,129 @@ const generateDotForD3 = (tree) => {
     return result;
 };
 
-export {buildParseTree, generateDot, generateDotForD3};
+// Generar DOT
+function generarDot(entrada) {
+    // Utilidad para extraer bloques anidados
+    function extractAnidado(input, startKey) {
+        const start = input.indexOf(startKey);
+        console.log(input)
+        console.log('comienzo',start)
+        if (start === -1) return null;
+
+        let openBrackets = 0;
+        let end = -1;
+        
+        for (let i = start + (startKey.length - 1); i < input.length; i++) {
+            if (input[i] === "[") openBrackets++;
+            if (input[i] === "]") openBrackets--;
+            console.log('entrada input ',input[i])
+            console.log('abiertos',openBrackets)
+            if (openBrackets === 0) {
+                end = i;
+                break;
+            }
+        }
+
+        if (end === -1) return null; // No se encontró cierre correspondiente
+        console.log( input.substring(start + startKey.length + 1, end).trim())
+        return input.substring(start + startKey.length + 1, end).trim();
+    }
+
+    // Extraer contenido por secciones
+    const operacionesRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "Operaciones=[");
+    const configuracionesLexRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "ConfiguracionesLex = [");
+    const configuracionesParserRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "ConfiguracionesParser = [");
+
+    const funcionesRegex = /(\w+\(.*?\))/g;
+    const comentariosRegex = /(\/\/.*$|\/\*.*?\*\/)/gsm;
+
+    // Procesar secciones
+    const operaciones = operacionesRaw
+        ? JSON.parse(`[${operacionesRaw.replace(/(\w+):/g, '"$1":')}]`)
+        : [];
+    const configuracionesLex = configuracionesLexRaw
+        ? configuracionesLexRaw.split(",").map(config => config.trim())
+        : [];
+    const configuracionesParser = configuracionesParserRaw
+        ? configuracionesParserRaw.split(",").map(config => config.trim())
+        : [];
+    const funciones = entrada.match(funcionesRegex) || [];
+    const comentarios = entrada.match(comentariosRegex) || [];
+
+    let dot = "digraph {\n";
+    let contadorNodo = 0;
+
+    // Crear nodo raíz
+    const raiz = `nodo${contadorNodo++}`;
+    dot += `  ${raiz} [label="Archivo"];\n`;
+
+    // Generar sección de Operaciones
+    const nodoOperaciones = `nodo${contadorNodo++}`;
+    dot += `  ${nodoOperaciones} [label="Operaciones"];\n  ${raiz} -> ${nodoOperaciones};\n`;
+
+    const generarNodoOperaciones = (operacion, padre) => {
+        const nodoId = `nodo${contadorNodo++}`;
+        dot += `  ${nodoId} [label="${operacion.operacion.replace(/"/g, '\\"')}"];\n  ${padre} -> ${nodoId};\n`;
+
+        if (operacion.valor1 && typeof operacion.valor1 === "object") {
+            generarNodoOperaciones(operacion.valor1, nodoId);
+        } else if (operacion.valor1 !== undefined) {
+            const valorNodo = `nodo${contadorNodo++}`;
+            dot += `  ${valorNodo} [label="${operacion.valor1}"];\n  ${nodoId} -> ${valorNodo};\n`;
+        }
+
+        if (operacion.valor2 && typeof operacion.valor2 === "object") {
+            if (Array.isArray(operacion.valor2)) {
+                operacion.valor2.forEach(op => generarNodoOperaciones(op, nodoId));
+            } else {
+                generarNodoOperaciones(operacion.valor2, nodoId);
+            }
+        } else if (operacion.valor2 !== undefined) {
+            const valorNodo = `nodo${contadorNodo++}`;
+            dot += `  ${valorNodo} [label="${operacion.valor2}"];\n  ${nodoId} -> ${valorNodo};\n`;
+        }
+    };
+    console.log(operaciones)
+
+    operaciones.forEach(op => generarNodoOperaciones(op, nodoOperaciones));
+
+    // Generar sección de Configuraciones
+    const nodoConfiguraciones = `nodo${contadorNodo++}`;
+    dot += `  ${nodoConfiguraciones} [label="Configuraciones"];\n  ${raiz} -> ${nodoConfiguraciones};\n`;
+
+    const nodoLex = `nodo${contadorNodo++}`;
+    dot += `  ${nodoLex} [label="ConfiguracionesLex"];\n  ${nodoConfiguraciones} -> ${nodoLex};\n`;
+    configuracionesLex.forEach(config => {
+        const nodoConfig = `nodo${contadorNodo++}`;
+        dot += `  ${nodoConfig} [label="${config.trim().replace(/"/g, '\\"')}"];\n  ${nodoLex} -> ${nodoConfig};\n`;
+    });
+
+    const nodoParser = `nodo${contadorNodo++}`;
+    dot += `  ${nodoParser} [label="ConfiguracionesParser"];\n  ${nodoConfiguraciones} -> ${nodoParser};\n`;
+    configuracionesParser.forEach(config => {
+        const nodoConfig = `nodo${contadorNodo++}`;
+        dot += `  ${nodoConfig} [label="${config.trim().replace(/"/g, '\\"')}"];\n  ${nodoParser} -> ${nodoConfig};\n`;
+    });
+
+    // Generar sección de Funciones
+    const nodoFunciones = `nodo${contadorNodo++}`;
+    dot += `  ${nodoFunciones} [label="Funciones"];\n  ${raiz} -> ${nodoFunciones};\n`;
+    funciones.forEach(func => {
+        const nodoFunc = `nodo${contadorNodo++}`;
+        dot += `  ${nodoFunc} [label="${func.trim().replace(/"/g, '\\"')}"];\n  ${nodoFunciones} -> ${nodoFunc};\n`;
+    });
+
+    // Generar sección de Comentarios
+    const nodoComentarios = `nodo${contadorNodo++}`;
+    dot += `  ${nodoComentarios} [label="Comentarios"];\n  ${raiz} -> ${nodoComentarios};\n`;
+    comentarios.forEach(comentario => {
+        const nodoComentario = `nodo${contadorNodo++}`;
+        dot += `  ${nodoComentario} [label="${comentario.trim().replace(/"/g, '\\"')}"];\n  ${nodoComentarios} -> ${nodoComentario};\n`;
+    });
+
+    dot += "}\n";
+    return dot;
+}
+
+
+export {buildParseTree, generarDot, generateDot, generateDotForD3};
