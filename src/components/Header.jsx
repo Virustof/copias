@@ -54,7 +54,7 @@ const Header = () => {
           <li><Link to="/analyze">Analizador Sintactico</Link></li>
           <li><Link to="/report">Grafica Arbol</Link></li>
           <li><Link to="/operations">Operaciones</Link></li>
-          <li><Link to="/table">Tabla de tokens</Link></li>
+          <li><Link to="/table">Tabla</Link></li>
 
         </ul>
         <div className="file-menu">

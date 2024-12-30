@@ -182,34 +182,11 @@ const buildParseTree = (data) => {
     return traverseObject(data, "Program");
 };
 
-// Paso 4: Generar el string DOT para D3
-const generateDotForD3 = (tree) => {
-    let result = "digraph {\n";
-    let counter = 0;
-
-    const traverse = (node, parentId = null) => {
-        const nodeId = `node${counter++}`;
-        result += `  ${nodeId} [label="${node.label.replace(/"/g, '\'')}"];\n`;
-
-        if (parentId) {
-            result += `  ${parentId} -> ${nodeId};\n`;
-        }
-
-        if (node.children) {
-            node.children.forEach((child) => traverse(child, nodeId));
-        }
-    };
-
-    traverse(tree);
-    result += "}";
-    return result;
-};
-
 // Generar DOT
 function generarDot(entrada) {
 
     // Extraer contenido por secciones
-    const operacionesRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "Operaciones=[");
+    const operacionesRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "Operaciones = [");
     const configuracionesLexRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "ConfiguracionesLex = [");
     const configuracionesParserRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "ConfiguracionesParser = [");
 
@@ -307,7 +284,7 @@ function generarDot(entrada) {
 function extractAnidado(input, startKey) {
     const start = input.indexOf(startKey);
     console.log(input)
-    console.log('comienzo',start)
+    console.log('comienzo',start, 'startKey',startKey)
     if (start === -1) return null;
 
     let openBrackets = 0;
@@ -329,4 +306,128 @@ function extractAnidado(input, startKey) {
     return input.substring(start + startKey.length + 1, end).trim();
 }
 
-export {buildParseTree, generarDot, generateDot, extractAnidado};
+function generarEstructura(entrada) {
+    // Extraer contenido por secciones
+    const operacionesRaw = extractAnidado(entrada, "Operaciones = [");
+    const configuracionesLexRaw = extractAnidado(entrada, "ConfiguracionesLex = [");
+    const configuracionesParserRaw = extractAnidado(entrada, "ConfiguracionesParser = [");
+
+    const funcionesRegex = /(\w+\(.*?\))/g;
+    const comentariosRegex = /(\/\/.*$|\/\*.*?\*\/)/gsm;
+
+    // Procesar secciones
+    const operaciones = operacionesRaw
+        ? JSON.parse(`[${operacionesRaw.replace(/(\w+):/g, '"$1":')}]`)
+        : [];
+    const configuracionesLex = configuracionesLexRaw
+        ? configuracionesLexRaw.split(",").map(config => config.trim())
+        : [];
+    const configuracionesParser = configuracionesParserRaw
+        ? configuracionesParserRaw.split(",").map(config => config.trim())
+        : [];
+    const funciones = entrada.match(funcionesRegex) || [];
+    const comentarios = entrada.match(comentariosRegex) || [];
+
+    const estructura = [];
+    let contadorNodo = 0;
+
+    // Crear nodo raíz
+    const raizId = `nodo${contadorNodo++}`;
+    estructura.push({ data: { id: raizId, label: "Archivo" } });
+
+    // Generar sección de Operaciones
+    const nodoOperaciones = generarNodo("Operaciones", raizId, estructura, contadorNodo);
+    contadorNodo = nodoOperaciones.contador;
+
+    operaciones.forEach(op => {
+        const result = generarNodoOperaciones(op, nodoOperaciones.id, estructura, contadorNodo);
+        contadorNodo = result.contador;
+    });
+
+    // Generar sección de Configuraciones
+    const nodoConfiguraciones = generarNodo("Configuraciones", raizId, estructura, contadorNodo);
+    contadorNodo = nodoConfiguraciones.contador;
+
+    const nodoLex = generarNodo("ConfiguracionesLex", nodoConfiguraciones.id, estructura, contadorNodo);
+    contadorNodo = nodoLex.contador;
+
+    configuracionesLex.forEach(config => {
+        const nodoId = `nodo${contadorNodo++}`;
+        estructura.push({ data: { id: nodoId, label: config } });
+        estructura.push({ data: { source: nodoLex.id, target: nodoId } });
+    });
+
+    const nodoParser = generarNodo("ConfiguracionesParser", nodoConfiguraciones.id, estructura, contadorNodo);
+    contadorNodo = nodoParser.contador;
+
+    configuracionesParser.forEach(config => {
+        const nodoId = `nodo${contadorNodo++}`;
+        estructura.push({ data: { id: nodoId, label: config } });
+        estructura.push({ data: { source: nodoParser.id, target: nodoId } });
+    });
+
+    // Generar sección de Funciones
+    const nodoFunciones = generarNodo("Funciones", raizId, estructura, contadorNodo);
+    contadorNodo = nodoFunciones.contador;
+
+    funciones.forEach(func => {
+        const nodoId = `nodo${contadorNodo++}`;
+        estructura.push({ data: { id: nodoId, label: func } });
+        estructura.push({ data: { source: nodoFunciones.id, target: nodoId } });
+    });
+
+    // Generar sección de Comentarios
+    const nodoComentarios = generarNodo("Comentarios", raizId, estructura, contadorNodo);
+    contadorNodo = nodoComentarios.contador;
+
+    comentarios.forEach(comentario => {
+        const nodoId = `nodo${contadorNodo++}`;
+        estructura.push({ data: { id: nodoId, label: comentario } });
+        estructura.push({ data: { source: nodoComentarios.id, target: nodoId } });
+    });
+
+    return estructura;
+}
+
+function generarNodo(label, parentId, estructura, contador) {
+    const nodoId = `nodo${contador++}`;
+    estructura.push({ data: { id: nodoId, label: label } });
+    estructura.push({ data: { source: parentId, target: nodoId } });
+    return { id: nodoId, estructura, contador };
+}
+
+function generarNodoOperaciones(operacion, parentId, estructura, contador) {
+    const nodoId = `nodo${contador++}`;
+    estructura.push({ data: { id: nodoId, label: operacion.operacion } });
+    estructura.push({ data: { source: parentId, target: nodoId } });
+
+    if (operacion.valor1 && typeof operacion.valor1 === "object") {
+        const result = generarNodoOperaciones(operacion.valor1, nodoId, estructura, contador);
+        contador = result.contador;
+    } else if (operacion.valor1 !== undefined) {
+        const valorNodo = `nodo${contador++}`;
+        estructura.push({ data: { id: valorNodo, label: operacion.valor1 } });
+        estructura.push({ data: { source: nodoId, target: valorNodo } });
+    }
+
+    if (operacion.valor2 && typeof operacion.valor2 === "object") {
+        if (Array.isArray(operacion.valor2)) {
+            operacion.valor2.forEach(op => {
+                const result = generarNodoOperaciones(op, nodoId, estructura, contador);
+                contador = result.contador;
+            });
+        } else {
+            const result = generarNodoOperaciones(operacion.valor2, nodoId, estructura, contador);
+            contador = result.contador;
+        }
+    } else if (operacion.valor2 !== undefined) {
+        const valorNodo = `nodo${contador++}`;
+        estructura.push({ data: { id: valorNodo, label: operacion.valor2 } });
+        estructura.push({ data: { source: nodoId, target: valorNodo } });
+    }
+
+    return { contador };
+}
+
+
+export {buildParseTree, generarDot, generateDot, extractAnidado, generarEstructura};
