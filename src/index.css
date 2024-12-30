@@ -152,3 +152,9 @@ header a:hover {
 .file-menu:hover .file-dropdown {
   display: block; /* Mostrar cuando el usuario pase el mouse */
 }
+
+.pre-code{
+  background-color: "#f4f4f4" !important;
+  padding: "10px";
+  border-radius: "5px"
+}

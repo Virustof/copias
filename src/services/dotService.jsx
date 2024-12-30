@@ -207,31 +207,6 @@ const generateDotForD3 = (tree) => {
 
 // Generar DOT
 function generarDot(entrada) {
-    // Utilidad para extraer bloques anidados
-    function extractAnidado(input, startKey) {
-        const start = input.indexOf(startKey);
-        console.log(input)
-        console.log('comienzo',start)
-        if (start === -1) return null;
-
-        let openBrackets = 0;
-        let end = -1;
-        
-        for (let i = start + (startKey.length - 1); i < input.length; i++) {
-            if (input[i] === "[") openBrackets++;
-            if (input[i] === "]") openBrackets--;
-            console.log('entrada input ',input[i])
-            console.log('abiertos',openBrackets)
-            if (openBrackets === 0) {
-                end = i;
-                break;
-            }
-        }
-
-        if (end === -1) return null; // No se encontró cierre correspondiente
-        console.log( input.substring(start + startKey.length + 1, end).trim())
-        return input.substring(start + startKey.length + 1, end).trim();
-    }
 
     // Extraer contenido por secciones
     const operacionesRaw = extractAnidado(entrada.replace(/\s+/g, ' ').trim(), "Operaciones=[");
@@ -328,6 +303,30 @@ function generarDot(entrada) {
     dot += "}\n";
     return dot;
 }
+// Utilidad para extraer bloques anidados
+function extractAnidado(input, startKey) {
+    const start = input.indexOf(startKey);
+    console.log(input)
+    console.log('comienzo',start)
+    if (start === -1) return null;
 
+    let openBrackets = 0;
+    let end = -1;
+    
+    for (let i = start + (startKey.length - 1); i < input.length; i++) {
+        if (input[i] === "[") openBrackets++;
+        if (input[i] === "]") openBrackets--;
+        console.log('entrada input ',input[i])
+        console.log('abiertos',openBrackets)
+        if (openBrackets === 0) {
+            end = i;
+            break;
+        }
+    }
 
-export {buildParseTree, generarDot, generateDot, generateDotForD3};
+    if (end === -1) return null; // No se encontró cierre correspondiente
+    console.log( input.substring(start + startKey.length + 1, end).trim())
+    return input.substring(start + startKey.length + 1, end).trim();
+}
+
+export {buildParseTree, generarDot, generateDot, extractAnidado};
